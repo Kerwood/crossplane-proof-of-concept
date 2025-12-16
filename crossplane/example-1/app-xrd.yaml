@@ -1,0 +1,65 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: apps.example.crossplane.io
+spec:
+  scope: Namespaced
+  group: example.crossplane.io
+  names:
+    kind: App
+    plural: apps
+  versions:
+    - name: v1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                image:
+                  description: The app's OCI container image.
+                  type: string
+                port:
+                  description: HTTP Port.
+                  type: integer
+                replicas:
+                  description: Pod replicas
+                  type: integer
+                serviceAccount:
+                  description: A service account with workload identity.
+                  type: boolean
+                authentication:
+                  description: Enable Azure App Registration with workload identity.
+                  type: boolean
+                storageBucketName:
+                  description: The globally unique bucket name.
+                  type: string
+                hostname:
+                  description: The hostname/url for the application.
+                  type: string
+              required:
+                - image
+            status:
+              type: object
+              properties:
+                replicas:
+                  description: The number of available app replicas.
+                  type: integer
+                address:
+                  description: The app's IP address.
+                  type: string
+                googleServiceAccountID:
+                  description: The ID of the workload identity service account.
+                  type: string
+                serviceAccount:
+                  description: The Kubernetes service account name.
+                  type: string
+                azureClientId:
+                  description: The ID of the Azure App Registration.
+                  type: string
+                azureTenantId:
+                  description: The ID of the Azure Tenant.
+                  type: string

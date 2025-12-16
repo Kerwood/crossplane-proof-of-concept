@@ -1,0 +1,11 @@
+apiVersion: example.crossplane.io/v1
+kind: App
+metadata:
+  name: object-lister
+spec:
+  image: docker.io/kerwood/object-lister:v1
+  port: 3000
+  hostname: lister.example.org
+  serviceAccount: true
+  storageBucketName: my-app-3b7ef8ac
+  authentication: true

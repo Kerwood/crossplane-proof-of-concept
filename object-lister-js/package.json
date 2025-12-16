@@ -1,0 +1,14 @@
+{
+  "name": "object-lister",
+  "version": "1.0.0",
+  "main": "server.js",
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@azure/msal-node": "^3.8.4",
+    "@google-cloud/storage": "^7.18.0",
+    "express": "^5.2.1",
+    "express-session": "^1.18.2"
+  }
+}

@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane-operation-additional-permissions
+  labels:
+    rbac.crossplane.io/aggregate-to-crossplane: "true"
+rules:
+  # Additional permissions for Operations
+  - apiGroups: ["iam.cnrm.cloud.google.com"]
+    resources: ["iamserviceaccounts", "iampolicymembers"]
+    verbs: ["*"]
+  - apiGroups: ["storage.cnrm.cloud.google.com"]
+    resources: ["storagebuckets"]
+    verbs: ["*"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["*"]

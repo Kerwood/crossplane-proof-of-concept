@@ -1,0 +1,14 @@
+apiVersion: azuread.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: azuread
+spec:
+  # The Azure AD tenant ID
+  tenantID: "e3db0bd0-8a61-4eca-afda-5a2e32527b4b"
+  # The Azure AD application (client) ID
+  clientID: "d699cb75-6907-439d-9c77-352c64cf6de4"
+  # The file path where GKE projects the token (standard for workload identity)
+  oidcTokenFilePath: /var/run/secrets/tokens/azure-token
+  credentials:
+    # Use the OIDC token file provided by GKE Workload Identity Federation
+    source: OIDCTokenFile

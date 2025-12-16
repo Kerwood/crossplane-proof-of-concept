@@ -1,0 +1,353 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: app-kcl
+spec:
+  compositeTypeRef:
+    apiVersion: example.crossplane.io/v1
+    kind: App
+  mode: Pipeline
+  pipeline:
+    - step: create-service-account
+      functionRef:
+        name: crossplane-contrib-function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          dependencies: |
+            service_account = { oci = "oci://docker.io/kerwood/kcl-service-account", version = "0.0.2" }
+          source: |
+            import service_account as sa
+            import service_account.iam
+
+            # Default values
+            _workloadIdentityPoolName = "<project-id-of-workload-identity-enabled-gke-cluster>"
+
+            # Observed resources
+            observed_xr = option("params").oxr
+            observed_sa = option("params").ocds["k8sServiceAccount"]?.Resource
+            observed_gsa = option("params").ocds["gcpServiceAccount"]?.Resource
+            observed_policy = option("params").ocds["workloadIdentityPolicyMember"]?.Resource
+
+            _sa_required = bool(observed_xr.spec?.serviceAccount or False)
+            _sa_name = observed_xr.metadata.name
+
+            _desired_sa = None
+            _desired_gsa = None
+            _desired_policy = None
+
+            _prereq_met = _sa_required
+
+            if _prereq_met:
+ 
+              # [ K8s Service Account ]
+              ############################################################
+
+              _desired_sa = sa.ServiceAccount(sa.ServiceAccountConfig{
+                name: _sa_name
+                gcpServiceAccountId: observed_gsa?.status?.email
+                annotations: {
+                  "krm.kcl.dev/composition-resource-name": "k8sServiceAccount"
+                }
+              })
+
+              if observed_sa:
+                _desired_sa.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Google Service Account ]
+              ############################################################
+
+              _desired_gsa = iam.ServiceAccount(iam.ServiceAccountConfig{
+                name: _sa_name
+                annotations: {
+                  "krm.kcl.dev/composition-resource-name": "gcpServiceAccount"
+                }
+              })
+
+              _gsa_ready = any_true([c.type == "Ready" and c.status == "True" for c in observed_gsa?.status?.conditions or []])
+
+              if _gsa_ready:
+                _desired_gsa.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Google Policy Binding ]
+              ############################################################
+
+              if _gsa_ready:
+                _desired_policy = iam.WorkloadIdentityUserPolicy(iam.WorkloadIdentityUserPolicyConfig{
+                  workloadIdentityPool: _workloadIdentityPoolName
+                  namespace: observed_xr.metadata.namespace
+                  gcpServiceAccountId: observed_gsa?.status?.email
+                  annotations: {
+                    "krm.kcl.dev/composition-resource-name": "workloadIdentityPolicyMember"
+                  }
+                })
+
+                _policy_ready = any_true([c.type == "Ready" and c.status == "True" for c in observed_policy?.status?.conditions or []])
+
+                if _policy_ready:
+                  _desired_policy.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+            # ---[ If statement ends ]------------------------------------------
+
+            _desired_xr = {
+              **option("params").dxr
+              status.googleServiceAccountID = observed_gsa?.status?.email or ""
+              status.serviceAccount = observed_sa?.metadata?.name or ""
+            }
+
+            items = filter i in [_desired_gsa, _desired_policy, _desired_sa, _desired_xr] {i != None}
+
+    - step: create-storage-bucket
+      functionRef:
+        name: crossplane-contrib-function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          dependencies: |
+            storage_bucket = { oci = "oci://docker.io/kerwood/kcl-storage-bucket", version = "0.0.2" }
+          source: |
+            import storage_bucket as sb
+
+            observed_xr = option("params").oxr
+            observed_bucket = option("params").ocds["storageBucket"]?.Resource
+            observed_policy = option("params").ocds["objectViewerConfig"]?.Resource
+
+            _bucket_name = observed_xr.spec?.storageBucketName
+            _gsa_id = observed_xr?.status?.googleServiceAccountID
+
+            _desired_bucket = None
+            _desired_policiy = None
+
+            _prereq_met = _bucket_name
+
+            if _prereq_met:
+
+              #[ Google Storage Bucket ]
+              ############################################################
+
+              _desired_bucket = sb.StorageBucket(sb.StorageBucketConfig{
+                name: _bucket_name
+                annotations: {
+                  "krm.kcl.dev/composition-resource-name": "storageBucket"
+                }
+              })
+
+              _bucket_ready = any_true([c.type == "Ready" and c.status == "True" for c in observed_bucket?.status?.conditions or []])
+
+              if _bucket_ready:
+                _desired_bucket.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Google Policy Binding ]
+              ############################################################
+
+              _desired_policy = sb.SetObjectViewer(sb.SetObjectViewerConfig{
+                gcpServiceAccountId: _gsa_id
+                storageBucketName: _bucket_name
+                annotations: {
+                  "krm.kcl.dev/composition-resource-name": "objectViewerConfig"
+                }
+              }) if _gsa_id else None
+
+              _policy_ready = any_true([c.type == "Ready" and c.status == "True" for c in observed_policy?.status?.conditions or []])
+
+              if _policy_ready:
+                _desired_policy.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+            # ---[ If statement ends ]------------------------------------------
+
+            items = filter i in [ _desired_bucket, _desired_policy ] {i != None}
+
+    - step: create-deployment
+      functionRef:
+        name: crossplane-contrib-function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          dependencies: |
+            std_deployment = { oci = "oci://docker.io/kerwood/kcl-std-deployment", version = "0.0.4" }
+          source: |
+            import std_deployment as d
+
+            # Default values
+            _replicas = observed_xr.spec?.replicas or 1
+            _session_secret = "7p1vt/PG9LaPqUfEXo6Va6yodIGYrWRk3IRdVLNXxfuvQE05RF/JFrsQVo3yds93"
+            _redirect_uri = "https://" + (observed_xr.spec?.hostname or "") + "/auth/callback"
+            _gatewayRef = {
+              name: "default"
+              namespace: "kgateway-system"
+            }
+
+            # Observed resources
+            observed_xr = option("params").oxr
+            observed_deployment = option("params").ocds["deployment"]?.Resource
+            observed_service = option("params").ocds["service"]?.Resource
+            observed_httpRoute = option("params").ocds["httpRoute"]?.Resource
+
+            _desired_deployment = None
+            _desired_service = None
+            _desired_httpRoute = None
+
+            _prereq_met = observed_xr.spec?.image
+
+            if _prereq_met:
+
+              _bundle = d.Deployment(d.DeploymentConfig {
+                name = observed_xr.metadata.name
+                image = observed_xr.spec.image
+                replicas = _replicas
+                port = observed_xr.spec?.port or None
+                hostname = observed_xr.spec?.hostname or None
+                labels = observed_xr.metadata.labels or {}
+                serviceAccountName = observed_xr?.status?.serviceAccount
+                gatewayRef: _gatewayRef
+                envs = { 
+                  "BUCKET_NAME": observed_xr.spec?.storageBucketName or "",
+                  "REQUIRE_AUTH": "true" if observed_xr.spec?.authentication else "false",
+                  "AZURE_TENANT_ID": observed_xr?.status?.azureTenantId or "",
+                  "AZURE_CLIENT_ID": observed_xr?.status?.azureClientId or "",
+                  "SESSION_SECRET": _session_secret,
+                  "REDIRECT_URI": _redirect_uri,
+                }
+                deploymentAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "deployment"
+                }
+                serviceAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "service"
+                }
+                httpRouteAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "httpRoute"
+                }
+              })
+
+              _desired_deployment = _bundle.deployment
+              _desired_service = _bundle.service
+              _desired_httpRoute = _bundle.httpRoute
+
+              # [ Deployment ]
+              ############################################################
+
+              _deployment_ready = any_true([c.type == "Available" and c.status == "True" for c in observed_deployment?.status?.conditions or []])
+
+              if _deployment_ready:
+                _desired_deployment.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Service ]
+              ############################################################
+
+              _service_ready = observed_service?.spec?.clusterIP
+
+              if _desired_service and _service_ready:
+                _desired_service.metadata.annotations["krm.kcl.dev/ready"] = "True"
+                
+              # [ Http Route ]
+              ############################################################
+
+              _parents = observed_httpRoute?.status?.parents or []
+
+              _httpRoute_ready = any_true([
+                any_true([c.type == "Accepted" and c.status == "True" for c in parent?.conditions or []]) for parent in _parents
+              ])
+
+              if _desired_httpRoute and _httpRoute_ready:
+                _desired_httpRoute.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+            # ---[ If statement ends ]------------------------------------------
+
+            _desired_xr = {
+              **option("params").dxr
+              status.replicas = observed_deployment?.status?.availableReplicas or 0
+            }
+
+            items = filter i in [_desired_deployment, _desired_service, _desired_httpRoute, _desired_xr] {i != None}
+
+    - step: create-app-registration
+      functionRef:
+        name: crossplane-contrib-function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLInput
+        spec:
+          dependencies: |
+            app_registration = { oci = "oci://docker.io/kerwood/kcl-app-registration", version = "0.0.11" }
+          source: |
+            import app_registration as a
+
+            # Default values
+            _azure_tenant_id = "690cb390-958c-4038-89a2-d1024da1ec5a"
+            _issuer = "https://container.googleapis.com/v1/projects/<project-id>/locations/europe-west3/clusters/<cluster-name>"
+
+            # Observed resources
+            observed_xr = option("params").oxr
+            observed_app = option("params").ocds["application"]?.Resource
+            observed_sp = option("params").ocds["servicePrincipal"]?.Resource
+            observed_fi = option("params").ocds["federatedIdentity"]?.Resource
+
+            _hostname = observed_xr.spec?.hostname
+            _sa_required = bool(observed_xr.spec?.serviceAccount or False)
+            _auth_required = bool(observed_xr.spec?.authentication or False)
+
+            _desired_app = None
+            _desired_sp = None
+            _desired_fi = None
+
+            _prereq_met = _hostname and _sa_required and _auth_required
+
+            if _prereq_met:
+              _bundle = a.AppRegistration(a.AppRegistrationConfig {
+                name = observed_xr.metadata.name
+                issuer = _issuer
+                namespace = observed_xr.metadata.namespace
+                serviceAccountName = observed_xr.status.serviceAccount
+                redirectUris = [
+                  "http://localhost/auth/callback",
+                  "https://" + _hostname + "/auth/callback",
+                ]
+                applicationAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "application"
+                }
+                principalAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "servicePrincipal"
+                }
+                federatedIdentityAnnotations: {
+                  "krm.kcl.dev/composition-resource-name": "federatedIdentity"
+                }
+                providerConfigRef: {
+                  kind: "ClusterProviderConfig",
+                  name: "azuread"
+                }
+              })
+
+              _desired_app = _bundle.application
+              _desired_sp = _bundle.servicePrincipal
+              _desired_fi = _bundle.federatedIdentity
+
+              # [ App Registration ]
+              ############################################################
+
+              if any_true([c.type == "Ready" and c.status == "True" for c in observed_app?.status?.conditions or []]):
+                _desired_app.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Service Principal ]
+              ############################################################
+
+              if any_true([c.type == "Ready" and c.status == "True" for c in observed_sp?.status?.conditions or []]):
+                _desired_sp.metadata.annotations["krm.kcl.dev/ready"] = "True"
+
+              # [ Federation Identity ]
+              ############################################################
+
+              if any_true([c.type == "Ready" and c.status == "True" for c in observed_fi?.status?.conditions or []]):
+                _desired_fi.metadata.annotations["krm.kcl.dev/ready"] = "True"
+              
+            # ---[ If statement ends ]------------------------------------------
+
+            _desired_xr = {
+              **option("params").dxr
+              status.azureClientId: observed_app?.status?.atProvider?.clientId or ""
+              status.azureTenantId: _azure_tenant_id if _auth_required else ""
+            }
+
+            items = filter i in [_desired_app, _desired_sp, _desired_fi, _desired_xr] {i != None}
