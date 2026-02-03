@@ -300,7 +300,7 @@ spec:
                 name = observed_xr.metadata.name
                 issuer = _issuer
                 namespace = observed_xr.metadata.namespace
-                serviceAccountName = observed_xr.status.serviceAccount
+                serviceAccountName = observed_xr.metadata.name
                 redirectUris = [
                   "http://localhost/auth/callback",
                   "https://" + _hostname + "/auth/callback",
