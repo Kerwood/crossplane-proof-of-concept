@@ -1,0 +1,8 @@
+apiVersion: example.org/v1
+kind: XDeployment
+metadata:
+  name: my-example
+spec:
+  image: nginxdemos/hello:latest
+  port: 80
+  hostname: example.org

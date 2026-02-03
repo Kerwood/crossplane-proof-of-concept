@@ -1,0 +1,19 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xdeployment
+spec:
+  compositeTypeRef:
+    apiVersion: example.org/v1
+    kind: XDeployment
+  mode: Pipeline
+  pipeline:
+  - step: run-the-template
+    functionRef:
+      name: xdeployment
+    input:
+      apiVersion: defaults.fn.crossplane.io/v1beta1
+      kind: XDeploymentDefaults
+      gateway:
+        name: jysk-cloud
+        namespace: kgateway-system

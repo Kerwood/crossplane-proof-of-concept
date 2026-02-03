@@ -1,0 +1,10 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: xdeployment
+  annotations:
+    # This tells crossplane render to connect to the function locally.
+    # render.crossplane.io/runtime: Development
+spec:
+  # This is ignored when using the Development runtime.
+  package: docker.io/kerwood/xpfn-xdeployment:v0.3.17

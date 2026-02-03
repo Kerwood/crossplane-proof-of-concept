@@ -1,0 +1,64 @@
+oci_reg := "docker.io/kerwood"
+
+[private]
+default:
+  @just --list
+
+# Crossplane render example
+render:
+  cd example && crossplane render xdeployment.yaml composition.yaml functions.yaml
+
+# Build the function and push it to OCI registry
+build-n-push tag="latest": build-runtime build-package
+  crossplane xpkg push --package-files=function-amd64.xpkg,function-arm64.xpkg {{oci_reg}}/xpfn-xdeployment:{{tag}}
+
+# Build the Crossplane function
+build-function: build-runtime build-package
+
+[private]
+build-runtime:
+  docker build . --platform=linux/amd64 --tag runtime-amd64
+  docker build . --platform=linux/arm64 --tag runtime-arm64
+
+[private]
+build-package:
+  crossplane xpkg build --package-root=package --embed-runtime-image=runtime-amd64 --package-file=function-amd64.xpkg
+  crossplane xpkg build --package-root=package --embed-runtime-image=runtime-arm64 --package-file=function-arm64.xpkg
+
+# Deploy all resources
+[group('Kubernetes')]
+deploy-all: deploy-function deploy-composition deploy-xrd
+
+# Deploy the Function resource
+[group('Kubernetes')]
+deploy-function:
+  kubectl apply -f ./example/functions.yaml
+
+# Deploy the Composition resource (function pipeline)
+[group('Kubernetes')]
+deploy-composition:
+  kubectl apply -f ./example/composition.yaml
+
+# Deploy the CompositeResourceDefinition resource.
+[group('Kubernetes')]
+deploy-xrd:
+  kubectl apply -f ./example/xrd.yaml
+
+# Delete all resources from Kubernetes
+[group('Kubernetes')]
+delete-all: delete-function delete-composition delete-xrd
+
+# Delete the Function resource
+[group('Kubernetes')]
+delete-function:
+  kubectl delete -f ./example/functions.yaml
+
+# Delete the Composition resource (function pipeline)
+[group('Kubernetes')]
+delete-composition:
+  kubectl delete -f ./example/composition.yaml
+
+# Delete the CompositeResourceDefinition resource.
+[group('Kubernetes')]
+delete-xrd:
+  kubectl delete -f ./example/xrd.yaml
