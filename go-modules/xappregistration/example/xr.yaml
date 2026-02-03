@@ -1,0 +1,29 @@
+apiVersion: example.org/v1
+kind: XAppRegistration
+metadata:
+  name: nginx-demo
+spec:
+  # Required
+  serviceAccountName: nginx-demo
+
+  # Required, allowed redirect URLs.
+  redirectURLs:
+    - http://localhost
+    - https://oauth.pstmn.io/v1/browser-callback
+
+  # Optional. all sub-fields are required is used.
+  roleAssignments:
+    - roleName: Reader
+      description: Grants read access to users
+      assignedGroups:
+        - f7455ef4-3c15-4dc3-8faa-3023f956a90d
+
+    - roleName: Writer
+      description: Grants write access to users
+      assignedGroups:
+        - f7455ef4-3c15-4dc3-8faa-3023f956a90d
+        - 374e01fd-5e0f-4a8a-a825-1720feaf9201
+
+  # Optional. Write connection details to a secret.
+  writeConnectionSecretToRef:
+    name: nginx-demo-connection-details

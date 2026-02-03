@@ -1,0 +1,37 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xdeployment
+spec:
+  compositeTypeRef:
+    apiVersion: example.org/v1
+    kind: XDeployment
+  mode: Pipeline
+  pipeline:
+  - step: run-the-template
+    functionRef:
+      name: xdeployment
+    input:
+      apiVersion: defaults.fn.crossplane.io/v1beta1
+      kind: XDeploymentDefaults
+
+      # Gateway API configuration, which gateway the HTTPRoute should use.
+      gateway:
+        name: my-gateway
+        namespace: kgateway-system
+
+      # The XDeployment supports enabling OAuth2Proxy authentication proxy as a sidecar.
+      # It supports Entra ID and uses Federated Credentials, so no need for static credentials. 
+      oauth2ProxyConfig:
+        image: quay.io/oauth2-proxy/oauth2-proxy
+        tag: v7.13.0
+
+        # Entra ID issuer URl.
+        issuerUrl: https://login.microsoftonline.com/e636515d-4821-4069-b69e-fbe4009045a7/v2.0
+        
+        # OAuth2Proxy Cookie Domain
+        cookieDomain: example.org
+
+        # A random string which is used with the XDeployment name to generate the OAuth2Proxy cookie secret
+        cookieSecretSeed: 3SB0QVfv7qQcPuWjUoMn9kEO27nTRTwQ
+

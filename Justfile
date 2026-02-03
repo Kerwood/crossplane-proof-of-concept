@@ -59,26 +59,26 @@ delete-example-1:
 build-object-lister tag="v1":
   cd ./object-lister-js && docker build -t {{oci_reg}}/object-lister:{{tag}} . --push
 
-# Build and puch KCL module app_registration.
+# Build and push KCL module app_registration.
 [group('example-1')]
 push-app-registration-module:
   cd ./kcl-modules/app_registration && kcl mod push oci://{{oci_reg}}/kcl-app-registration
 
-# Build and puch KCL module service_account.
+# Build and push KCL module service_account.
 [group('example-1')]
 push-service-account-module:
   cd ./kcl-modules/service_account && kcl mod push oci://{{oci_reg}}/kcl-service-account
 
-# Build and puch KCL module std_deployment.
+# Build and push KCL module std_deployment.
 [group('example-1')]
 push-std-deployment-module:
   cd ./kcl-modules/std_deployment && kcl mod push oci://{{oci_reg}}/kcl-std-deployment
 
-# Build and puch KCL module storage_bucket.
+# Build and push KCL module storage_bucket.
 [group('example-1')]
 push-storage-bucket-module:
   cd ./kcl-modules/storage_bucket && kcl mod push oci://{{oci_reg}}/kcl-storage-bucket
 
-# Build and puch all KCL module.
+# Build and push all KCL module.
 [group('example-1')]
 push-all-kcl-modules: push-app-registration-module push-service-account-module push-std-deployment-module push-storage-bucket-module

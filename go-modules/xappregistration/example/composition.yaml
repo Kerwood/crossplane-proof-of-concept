@@ -1,0 +1,31 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xappregistration
+spec:
+  compositeTypeRef:
+    apiVersion: example.org/v1
+    kind: XAppRegistration
+  mode: Pipeline
+  pipeline:
+  - step: run-the-template
+    functionRef:
+      name: xappregistration
+    input:
+      apiVersion: defaults.fn.crossplane.io/v1beta1
+      kind: XAppRegistrationDefaults
+
+      # Below value will be prefixed to all Enterprise Apps and App Registrations
+      appRegNamePrefix: Crossplane -
+
+      # The object ID of service principal (Enterprise App) which id creating
+      # the the resources. This will be added as owner for crossplane to manage them.
+      crossplaneServicePrincipalId: af2a92d8-2244-402f-8bb9-1bbe063c0352
+
+      # Below value is the issuer URL for the cluster to be added to the federated credential.
+      clusterIssuerUrl: https://container.googleapis.com/v1/projects/<project-id>/locations/europe-west3/clusters/<cluster-name>
+
+      # The provider config all resources should reference.
+      providerConfigRef:
+        name: azuread
+        kind: ClusterProviderConfig

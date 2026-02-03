@@ -1,0 +1,36 @@
+apiVersion: example.org/v1
+kind: XDeployment
+metadata:
+  name: nginx-demo
+spec:
+  # Required, creates a Deployment.
+  image: nginxdemos/hello
+  tag: latest
+
+  # Optional, creates a Service.
+  port: 80
+
+  # Optional, creates a HTTPRoute.
+  hostname: example.org
+
+  # Optional, defaults to two.
+  replicas: 2
+
+  # Optional, environment variables.
+  env:
+    ENV: production
+
+  # Optional: configures the deployment with a serviceAccountName.
+  # The service account must exist and be created using
+  # XServiceAccount resource. Defaults to "default".
+  serviceAccountName: nginx-demo
+  
+  # Optional.
+  singleSignOn:
+    # Optional, if the application does not have built-in authentication,
+    # enableAuthProxy adds an authentication proxy sidecar to the deployment.
+    enableAuthProxy: true
+
+    # Required, reference an XAppRegistration resource
+    connectionDetailsSecretRef:
+      name: nginx-demo-connection-details

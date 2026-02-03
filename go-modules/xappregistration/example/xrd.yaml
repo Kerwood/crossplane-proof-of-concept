@@ -1,0 +1,66 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xappregistrations.example.org
+spec:
+  group: example.org
+  names:
+    kind: XAppRegistration
+    plural: xappregistrations
+  scope: Namespaced
+  versions:
+  - name: v1
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              redirectURLs:
+                description: List of redirect URLs for the app registration.
+                items:
+                  type: string
+                minItems: 1
+                type: array
+              roleAssignments:
+                description: Role assignments to apply to the app registration.
+                items:
+                  properties:
+                    assignedGroups:
+                      items:
+                        type: string
+                      minItems: 1
+                      type: array
+                    description:
+                      minLength: 1
+                      type: string
+                    roleName:
+                      minLength: 1
+                      type: string
+                  required:
+                  - assignedGroups
+                  - description
+                  - roleName
+                  type: object
+                minItems: 1
+                type: array
+              serviceAccountName:
+                description: Name of the service account to associate with the app
+                  registration.
+                minLength: 1
+                type: string
+              writeConnectionSecretToRef:
+                description: Reference to the secret to write connection details to.
+                properties:
+                  name:
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - redirectURLs
+            - serviceAccountName
+            type: object
+        type: object
+    served: true
