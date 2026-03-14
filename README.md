@@ -306,7 +306,25 @@ First, follow the instructions in the [Azure AD Provider](#azure-ad-provider) se
 
 You will also need the [Crossplane CLI](https://docs.crossplane.io/latest/cli/).
 
-Each function includes a `Justfile` that can be used to build and publish the function image. Start by navigating to the `xappregistration` folder and updating the `oci_image` variable at the top of the `Justfile`. You must also update the same image reference in `example/functions.yaml`.
+Each function includes a `Justfile` that can be used to build and publish the function image.
+```
+Available recipes:
+    build-function            # Build the Crossplane function
+    build-n-push tag="latest" # Build the function and push it to OCI registry
+    render                    # Crossplane render example
+
+    [Kubernetes]
+    delete-all                # Delete all resources from Kubernetes
+    delete-composition        # Delete the Composition resource (function pipeline)
+    delete-function           # Delete the Function resource
+    delete-xrd                # Delete the CompositeResourceDefinition resource.
+    deploy-all                # Deploy all resources
+    deploy-composition        # Deploy the Composition resource (function pipeline)
+    deploy-function           # Deploy the Function resource
+    deploy-xrd                # Deploy the CompositeResourceDefinition resource
+```
+
+Start by navigating to the `xappregistration` folder and updating the `oci_image` variable at the top of the `Justfile`. You must also update the same image reference in `example/functions.yaml`.
 
 Next, run the `build-n-push` recipe. Use the same version that is specified in `example/function.yaml`.
 ```sh
